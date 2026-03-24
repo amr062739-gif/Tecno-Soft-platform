@@ -1,0 +1,178 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - name: string (required)
+    //   - email: string (required, email format)
+    //   - role: string (required, 'user' or 'admin')
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: courses
+    // Document ID: {courseId}
+    // Fields:
+    //   - title: string (required)
+    //   - description: string (required)
+    //   - imageUrl: string (required, URL)
+    //   - videoUrl: string (required, URL)
+    //   - price: number (required)
+    //   - isFree: bool (required)
+    //   - category: string (optional)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: enrollments
+    // Document ID: {enrollmentId}
+    // Fields:
+    //   - userId: string (required)
+    //   - courseId: string (required)
+    //   - status: string (required, 'pending', 'approved', 'rejected')
+    //   - paymentMethod: string (optional)
+    //   - paymentImage: string (optional, URL)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: chatbot_knowledge
+    // Document ID: {knowledgeId}
+    // Fields:
+    //   - question: string (required)
+    //   - answer: string (required)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: settings
+    // Document ID: {settingId}
+    // Fields:
+    //   - logoUrl: string (required, URL)
+    //   - facebookUrl: string (optional, URL)
+    //   - whatsappNumber: string (optional)
+    //   - updatedAt: timestamp (required)
+    //
+    // Collection: advertisements
+    // Document ID: {adId}
+    // Fields:
+    //   - imageUrl: string (required, URL)
+    //   - linkUrl: string (optional, URL)
+    //   - createdAt: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "amr062739@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidUrl(url) {
+      return url is string && (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['name', 'email', 'role', 'createdAt']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             isValidEmail(data.email) &&
+             data.role in ['user', 'admin'] &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidCourse(data) {
+      return data.keys().hasAll(['title', 'description', 'imageUrl', 'videoUrl', 'price', 'isFree', 'createdAt']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.description is string && data.description.size() > 0 &&
+             isValidUrl(data.imageUrl) &&
+             isValidUrl(data.videoUrl) &&
+             data.price is number &&
+             data.isFree is bool &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidEnrollment(data) {
+      return data.keys().hasAll(['userId', 'courseId', 'status', 'createdAt']) &&
+             data.userId is string &&
+             data.courseId is string &&
+             data.status in ['pending', 'approved', 'rejected'] &&
+             data.createdAt is timestamp &&
+             (!('paymentImage' in data) || isValidUrl(data.paymentImage));
+    }
+
+    function isValidChatbotKnowledge(data) {
+      return data.keys().hasAll(['question', 'answer', 'createdAt']) &&
+             data.question is string && data.question.size() > 0 && data.question.size() < 500 &&
+             data.answer is string && data.answer.size() > 0 && data.answer.size() < 2000 &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidSettings(data) {
+      return data.keys().hasAll(['logoUrl', 'updatedAt']) &&
+             isValidUrl(data.logoUrl) &&
+             (!('facebookUrl' in data) || isValidUrl(data.facebookUrl)) &&
+             (!('whatsappNumber' in data) || data.whatsappNumber is string) &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidAdvertisement(data) {
+      return data.keys().hasAll(['imageUrl', 'createdAt']) &&
+             isValidUrl(data.imageUrl) &&
+             (!('linkUrl' in data) || isValidUrl(data.linkUrl)) &&
+             data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'user';
+      allow update: if isAuthenticated() && (isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role && isValidUser(request.resource.data)));
+    }
+
+    match /courses/{courseId} {
+      allow read: if true; // Courses are public
+      allow create, update, delete: if isAdmin() && isValidCourse(request.resource.data);
+    }
+
+    match /enrollments/{enrollmentId} {
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.userId || isAdmin());
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId && isValidEnrollment(request.resource.data);
+      allow update: if isAdmin() && isValidEnrollment(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /chatbot_knowledge/{knowledgeId} {
+      allow read: if true; // Knowledge base is public for the chatbot
+      allow create, update, delete: if isAdmin() && isValidChatbotKnowledge(request.resource.data);
+    }
+
+    match /settings/{settingId} {
+      allow read: if true; // Settings are public
+      allow create, update, delete: if isAdmin() && isValidSettings(request.resource.data);
+    }
+
+    match /advertisements/{adId} {
+      allow read: if true; // Advertisements are public
+      allow create, update, delete: if isAdmin() && isValidAdvertisement(request.resource.data);
+    }
+  }
+}

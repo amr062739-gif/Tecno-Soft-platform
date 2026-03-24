@@ -1,0 +1,106 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "User's full name" },
+        "email": { "type": "string", "format": "email", "description": "User's email address" },
+        "role": { "type": "string", "enum": ["user", "admin"], "description": "User's role in the platform" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the user was created" }
+      },
+      "required": ["name", "email", "role", "createdAt"]
+    },
+    "Course": {
+      "title": "Course",
+      "description": "Educational course information",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Course title" },
+        "description": { "type": "string", "description": "Course description" },
+        "imageUrl": { "type": "string", "format": "uri", "description": "URL of the course thumbnail" },
+        "videoUrl": { "type": "string", "format": "uri", "description": "YouTube video URL or ID" },
+        "price": { "type": "number", "description": "Price of the course" },
+        "isFree": { "type": "boolean", "description": "Whether the course is free" },
+        "category": { "type": "string", "description": "Course category (e.g., Programming, AI)" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the course was created" }
+      },
+      "required": ["title", "description", "imageUrl", "videoUrl", "price", "isFree", "createdAt"]
+    },
+    "Enrollment": {
+      "title": "Enrollment",
+      "description": "Record of a user's enrollment in a course",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "ID of the user" },
+        "courseId": { "type": "string", "description": "ID of the course" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"], "description": "Enrollment status" },
+        "paymentMethod": { "type": "string", "description": "Payment method used (e.g., Instapay, Vodafone Cash)" },
+        "paymentImage": { "type": "string", "format": "uri", "description": "URL of the payment screenshot" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the enrollment was requested" }
+      },
+      "required": ["userId", "courseId", "status", "createdAt"]
+    },
+    "ChatbotKnowledge": {
+      "title": "ChatbotKnowledge",
+      "description": "Question and answer pairs for the chatbot",
+      "type": "object",
+      "properties": {
+        "question": { "type": "string", "description": "The question or keyword" },
+        "answer": { "type": "string", "description": "The answer to provide" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the knowledge was added" }
+      },
+      "required": ["question", "answer", "createdAt"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Site-wide settings and configurations",
+      "type": "object",
+      "properties": {
+        "logoUrl": { "type": "string", "format": "uri", "description": "URL of the site logo" },
+        "facebookUrl": { "type": "string", "format": "uri", "description": "URL of the Facebook page" },
+        "whatsappNumber": { "type": "string", "description": "WhatsApp contact number" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp" }
+      },
+      "required": ["logoUrl", "updatedAt"]
+    },
+    "Advertisement": {
+      "title": "Advertisement",
+      "description": "Advertisement images for the home page slider",
+      "type": "object",
+      "properties": {
+        "imageUrl": { "type": "string", "format": "uri", "description": "URL of the advertisement image" },
+        "linkUrl": { "type": "string", "format": "uri", "description": "Optional link when clicking the ad" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the ad was added" }
+      },
+      "required": ["imageUrl", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/courses/{courseId}": {
+      "schema": "Course",
+      "description": "Available courses"
+    },
+    "/enrollments/{enrollmentId}": {
+      "schema": "Enrollment",
+      "description": "Course enrollments and payment requests"
+    },
+    "/chatbot_knowledge/{knowledgeId}": {
+      "schema": "ChatbotKnowledge",
+      "description": "Chatbot knowledge base"
+    },
+    "/settings/{settingId}": {
+      "schema": "Settings",
+      "description": "Site configurations"
+    },
+    "/advertisements/{adId}": {
+      "schema": "Advertisement",
+      "description": "Home page advertisements"
+    }
+  }
+}
